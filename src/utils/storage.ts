@@ -1,9 +1,14 @@
-import type { CanvasState, DraftMeta } from '@/types';
+import type { CanvasState, DraftMeta, DraftVersion } from '@/types';
 
 const DRAFTS_KEY = 'poster_drafts';
 const CURRENT_DRAFT_KEY = 'current_draft';
+const MAX_VERSIONS = 10;
 
-export const saveDraft = (state: CanvasState): void => {
+export const generateId = (): string => {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+};
+
+export const saveDraft = (state: CanvasState, withVersion: boolean = true): void => {
   try {
     const drafts = getAllDrafts();
     const existingIndex = drafts.findIndex(d => d.id === state.id);
@@ -15,7 +20,22 @@ export const saveDraft = (state: CanvasState): void => {
       updatedAt: state.updatedAt,
       width: state.width,
       height: state.height,
+      versions: [],
     };
+
+    if (existingIndex >= 0) {
+      draftMeta.thumbnail = drafts[existingIndex].thumbnail;
+      draftMeta.versions = drafts[existingIndex].versions || [];
+    }
+
+    if (withVersion) {
+      const newVersion: DraftVersion = {
+        id: generateId(),
+        state: JSON.parse(JSON.stringify(state)),
+        savedAt: state.updatedAt,
+      };
+      draftMeta.versions = [newVersion, ...(draftMeta.versions || [])].slice(0, MAX_VERSIONS);
+    }
 
     if (existingIndex >= 0) {
       drafts[existingIndex] = draftMeta;
@@ -28,6 +48,36 @@ export const saveDraft = (state: CanvasState): void => {
     localStorage.setItem(CURRENT_DRAFT_KEY, state.id);
   } catch (e) {
     console.error('Failed to save draft:', e);
+  }
+};
+
+export const getDraftVersions = (draftId: string): DraftVersion[] => {
+  try {
+    const drafts = getAllDrafts();
+    const draft = drafts.find(d => d.id === draftId);
+    return draft?.versions || [];
+  } catch (e) {
+    console.error('Failed to get draft versions:', e);
+    return [];
+  }
+};
+
+export const restoreDraftVersion = (draftId: string, versionId: string): CanvasState | null => {
+  try {
+    const versions = getDraftVersions(draftId);
+    const version = versions.find(v => v.id === versionId);
+    if (!version) return null;
+
+    const restoredState = {
+      ...version.state,
+      updatedAt: Date.now(),
+    };
+
+    saveDraft(restoredState, true);
+    return restoredState;
+  } catch (e) {
+    console.error('Failed to restore version:', e);
+    return null;
   }
 };
 

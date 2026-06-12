@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Download, Smartphone, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Download, Smartphone, X, Loader2 } from 'lucide-react';
 import { parseShareLink } from '@/utils/storage';
-import { exportToPNG } from '@/utils/exporter';
+import { exportStateToPNG, downloadPNG } from '@/utils/exporter';
 import Button from '@/components/common/Button';
 import MobilePreview from '@/components/toolbar/MobilePreview';
 import type { CanvasElement, TextElement, ImageElement, ShapeElement } from '@/types';
-import { useCanvasStore } from '@/store/useCanvasStore';
 
 interface PreviewData {
   name: string;
@@ -17,13 +15,11 @@ interface PreviewData {
 }
 
 export default function Preview() {
-  const navigate = useNavigate();
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const { setCanvasSize, setElements, setBackgroundColor, setName } = useCanvasStore();
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     try {
@@ -37,10 +33,6 @@ export default function Preview() {
       const data = parseShareLink(hash);
       if (data) {
         setPreviewData(data);
-        setCanvasSize(data.width, data.height);
-        setElements(data.elements);
-        setBackgroundColor(data.backgroundColor);
-        setName(data.name);
       } else {
         setError('无法解析分享数据');
       }
@@ -49,18 +41,26 @@ export default function Preview() {
       setError('解析分享链接失败');
     }
     setLoading(false);
-  }, [setCanvasSize, setElements, setBackgroundColor, setName]);
+  }, []);
 
   const handleExport = async () => {
-    if (!canvasRef.current || !previewData) return;
+    if (!previewData) return;
+    setIsExporting(true);
     try {
-      const dataUrl = await exportToPNG(canvasRef.current, 2);
-      const link = document.createElement('a');
-      link.download = `${previewData.name || 'poster'}.png`;
-      link.href = dataUrl;
-      link.click();
+      const dataUrl = await exportStateToPNG({
+        ...previewData,
+        id: 'preview',
+        createdAt: 0,
+        updatedAt: 0,
+        selectedElementId: null,
+        zoom: 1,
+      } as any, 2);
+      const safeName = previewData.name?.replace(/[\\/:*?"<>|\s]/g, '-') || 'poster';
+      downloadPNG(dataUrl, `${safeName}-${previewData.width}x${previewData.height}@2x.png`);
     } catch (e) {
       alert('导出失败，请重试');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -103,6 +103,7 @@ export default function Preview() {
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 overflow: 'hidden',
+                userSelect: 'none',
               }}
             >
               {textEl.content}
@@ -204,10 +205,7 @@ export default function Preview() {
             <X size={32} className="text-red-500" />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">{error || '加载失败'}</h2>
-          <p className="text-dark-400 mb-6">分享链接可能已过期或无效</p>
-          <Button variant="primary" onClick={() => navigate('/')}>
-            返回首页
-          </Button>
+          <p className="text-dark-400">分享链接可能已过期或无效</p>
         </div>
       </div>
     );
@@ -224,13 +222,9 @@ export default function Preview() {
     <div className="h-screen w-screen flex flex-col bg-dark-950">
       <header className="h-14 bg-dark-900 border-b border-dark-700 flex items-center justify-between px-6 animate-fade-in">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="text-dark-400 hover:text-white"
-          >
-            <ArrowLeft size={20} />
-          </Button>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center">
+            <span className="text-white font-bold text-sm">P</span>
+          </div>
           <div>
             <h1 className="text-white font-medium text-sm">{previewData.name}</h1>
             <p className="text-dark-500 text-xs">
@@ -250,10 +244,11 @@ export default function Preview() {
           <Button
             variant="primary"
             size="sm"
-            icon={<Download size={16} />}
+            icon={isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             onClick={handleExport}
+            disabled={isExporting}
           >
-            导出 PNG
+            {isExporting ? '导出中...' : '导出 PNG'}
           </Button>
         </div>
       </header>
@@ -267,7 +262,6 @@ export default function Preview() {
           }}
         >
           <div
-            ref={canvasRef}
             className="relative"
             style={{
               width: `${previewData.width}px`,
@@ -282,7 +276,7 @@ export default function Preview() {
 
       <footer className="h-10 bg-dark-900 border-t border-dark-700 flex items-center justify-center">
         <p className="text-dark-500 text-xs">
-          由 Poster Studio 生成 · <button onClick={() => navigate('/')} className="text-accent-500 hover:underline">立即创建</button>
+          由 Poster Studio 生成 · 只读预览模式
         </p>
       </footer>
 

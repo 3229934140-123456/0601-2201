@@ -8,6 +8,7 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useCanvasStore } from '@/store/useCanvasStore';
 import { getDraft } from '@/utils/storage';
+import type { CanvasState } from '@/types';
 
 export default function Editor() {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -33,6 +34,10 @@ export default function Editor() {
     }
   }, [loadState]);
 
+  const handleRestoreVersion = (state: CanvasState) => {
+    loadState(state);
+  };
+
   const handleToggleLeftPanel = () => {
     setLeftPanelCollapsed(!leftPanelCollapsed);
   };
@@ -49,6 +54,7 @@ export default function Editor() {
         leftPanelCollapsed={leftPanelCollapsed}
         rightPanelCollapsed={rightPanelCollapsed}
         onShowMobilePreview={() => setShowMobilePreview(true)}
+        onRestoreVersion={handleRestoreVersion}
       />
 
       <div className="flex-1 flex overflow-hidden">

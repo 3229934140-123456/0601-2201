@@ -19,6 +19,7 @@ export interface BaseElement {
   zIndex: number;
   name: string;
   shadow?: ShadowConfig;
+  brandRole?: 'primary' | 'secondary' | 'accent' | 'logo' | 'background';
 }
 
 export interface TextElement extends BaseElement {
@@ -101,6 +102,13 @@ export interface BrandConfig {
   fonts: string[];
 }
 
+export interface DraftVersion {
+  id: string;
+  state: CanvasState;
+  savedAt: number;
+  note?: string;
+}
+
 export interface DraftMeta {
   id: string;
   name: string;
@@ -108,4 +116,5 @@ export interface DraftMeta {
   updatedAt: number;
   width: number;
   height: number;
+  versions?: DraftVersion[];
 }

@@ -33,6 +33,7 @@ interface TopToolbarProps {
   leftPanelCollapsed: boolean;
   rightPanelCollapsed: boolean;
   onShowMobilePreview: () => void;
+  onRestoreVersion?: (state: any) => void;
 }
 
 export const TopToolbar: React.FC<TopToolbarProps> = ({
@@ -41,6 +42,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   leftPanelCollapsed,
   rightPanelCollapsed,
   onShowMobilePreview,
+  onRestoreVersion,
 }) => {
   const {
     name,
@@ -343,6 +345,10 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         <DraftsModal
           onClose={() => setShowDrafts(false)}
           onLoad={handleLoadDraft}
+          onRestore={(state) => {
+            if (onRestoreVersion) onRestoreVersion(state);
+            setShowDrafts(false);
+          }}
         />
       )}
 
