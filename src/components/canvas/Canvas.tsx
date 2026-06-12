@@ -57,6 +57,8 @@ export const Canvas: React.FC<CanvasProps> = ({ readOnly = false }) => {
     rotateElement,
     updateElement,
   } = useCanvasStore();
+  
+  const pushHistory = useCanvasStore.getState()._pushHistory;
 
   const sortedElements = [...elements].sort((a, b) => a.zIndex - b.zIndex);
   const selectedElement = elements.find((e) => e.id === selectedElementId) || null;
@@ -77,6 +79,7 @@ export const Canvas: React.FC<CanvasProps> = ({ readOnly = false }) => {
     if (readOnly || element.locked) return;
     e.stopPropagation();
     
+    pushHistory();
     selectElement(element.id);
     
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
@@ -103,6 +106,7 @@ export const Canvas: React.FC<CanvasProps> = ({ readOnly = false }) => {
     if (!selectedElement || readOnly) return;
     e.stopPropagation();
     
+    pushHistory();
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     setDragState({
       ...initialDragState,
@@ -122,6 +126,7 @@ export const Canvas: React.FC<CanvasProps> = ({ readOnly = false }) => {
     if (!selectedElement || readOnly) return;
     e.stopPropagation();
     
+    pushHistory();
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     setDragState({
       ...initialDragState,

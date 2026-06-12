@@ -13,14 +13,14 @@ export const sizePresets: SizePreset[] = [
   { id: 'poster', name: '海报', platform: '通用', width: 800, height: 1200, icon: 'FileImage' },
 ];
 
-const createGradientBg = (colors: string[]): CanvasElement => ({
+const createGradientBg = (colors: string[], width: number = 1080, height: number = 1080): CanvasElement => ({
   id: 'bg-gradient',
   type: 'shape',
   shapeType: 'rectangle',
-  x: 0,
-  y: 0,
-  width: 1080,
-  height: 1080,
+  x: width / 2,
+  y: height / 2,
+  width,
+  height,
   rotation: 0,
   opacity: 1,
   locked: true,
@@ -217,8 +217,8 @@ export const templates: Template[] = [
           id: 'bg',
           type: 'shape',
           shapeType: 'rectangle',
-          x: 0,
-          y: 0,
+          x: 540,
+          y: 675,
           width: 1080,
           height: 1350,
           rotation: 0,
@@ -377,8 +377,8 @@ export const templates: Template[] = [
           id: 'bg',
           type: 'shape',
           shapeType: 'rectangle',
-          x: 0,
-          y: 0,
+          x: 600,
+          y: 314,
           width: 1200,
           height: 628,
           rotation: 0,
@@ -528,7 +528,7 @@ export const templates: Template[] = [
       height: 1440,
       backgroundColor: '#fdf2f8',
       elements: [
-        createGradientBg(['#fbc2eb', '#a6c1ee']),
+        createGradientBg(['#fbc2eb', '#a6c1ee'], 1080, 1440),
         createTitle('生日快乐', 400, '#1e293b'),
         {
           id: 'subtitle',

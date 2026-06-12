@@ -7,6 +7,7 @@ import MobilePreview from '@/components/toolbar/MobilePreview';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useCanvasStore } from '@/store/useCanvasStore';
+import { getDraft } from '@/utils/storage';
 
 export default function Editor() {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -18,14 +19,17 @@ export default function Editor() {
   useKeyboard();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const draftId = params.get('draft');
-    if (draftId) {
-      const { getDraft } = require('@/utils/storage');
-      const draft = getDraft(draftId);
-      if (draft) {
-        loadState(draft);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const draftId = params.get('draft');
+      if (draftId) {
+        const draft = getDraft(draftId);
+        if (draft) {
+          loadState(draft);
+        }
       }
+    } catch (e) {
+      console.error('Failed to load draft:', e);
     }
   }, [loadState]);
 

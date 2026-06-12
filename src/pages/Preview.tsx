@@ -5,7 +5,7 @@ import { parseShareLink } from '@/utils/storage';
 import { exportToPNG } from '@/utils/exporter';
 import Button from '@/components/common/Button';
 import MobilePreview from '@/components/toolbar/MobilePreview';
-import type { CanvasElement } from '@/types';
+import type { CanvasElement, TextElement, ImageElement, ShapeElement } from '@/types';
 import { useCanvasStore } from '@/store/useCanvasStore';
 
 interface PreviewData {
@@ -26,14 +26,14 @@ export default function Preview() {
   const { setCanvasSize, setElements, setBackgroundColor, setName } = useCanvasStore();
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (!hash) {
-      setError('无效的分享链接');
-      setLoading(false);
-      return;
-    }
-
     try {
+      const hash = window.location.hash.slice(1);
+      if (!hash) {
+        setError('无效的分享链接');
+        setLoading(false);
+        return;
+      }
+
       const data = parseShareLink(hash);
       if (data) {
         setPreviewData(data);
@@ -45,21 +45,143 @@ export default function Preview() {
         setError('无法解析分享数据');
       }
     } catch (e) {
+      console.error('Parse error:', e);
       setError('解析分享链接失败');
     }
     setLoading(false);
   }, [setCanvasSize, setElements, setBackgroundColor, setName]);
 
   const handleExport = async () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !previewData) return;
     try {
       const dataUrl = await exportToPNG(canvasRef.current, 2);
       const link = document.createElement('a');
-      link.download = `${previewData?.name || 'poster'}.png`;
+      link.download = `${previewData.name || 'poster'}.png`;
       link.href = dataUrl;
       link.click();
     } catch (e) {
       alert('导出失败，请重试');
+    }
+  };
+
+  const renderElement = (element: CanvasElement) => {
+    const baseStyle: React.CSSProperties = {
+      position: 'absolute',
+      left: element.x - element.width / 2,
+      top: element.y - element.height / 2,
+      width: element.width,
+      height: element.height,
+      transform: `rotate(${element.rotation}deg)`,
+      opacity: element.opacity,
+      zIndex: element.zIndex,
+    };
+
+    const shadowStyle = element.shadow
+      ? `${element.shadow.offsetX}px ${element.shadow.offsetY}px ${element.shadow.blur}px ${element.shadow.color}`
+      : 'none';
+
+    switch (element.type) {
+      case 'text': {
+        const textEl = element as TextElement;
+        return (
+          <div key={element.id} style={baseStyle}>
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: textEl.textAlign === 'center' ? 'center' : textEl.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                fontSize: textEl.fontSize,
+                fontFamily: textEl.fontFamily,
+                fontWeight: textEl.fontWeight,
+                color: textEl.color,
+                textAlign: textEl.textAlign,
+                lineHeight: textEl.lineHeight,
+                letterSpacing: textEl.letterSpacing,
+                textShadow: shadowStyle !== 'none' ? shadowStyle : undefined,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+              }}
+            >
+              {textEl.content}
+            </div>
+          </div>
+        );
+      }
+
+      case 'image':
+      case 'logo': {
+        const imgEl = element as ImageElement;
+        return (
+          <div key={element.id} style={baseStyle}>
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: imgEl.borderRadius,
+                overflow: 'hidden',
+                boxShadow: shadowStyle,
+              }}
+            >
+              <img
+                src={imgEl.src}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: imgEl.objectFit,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+                draggable={false}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      case 'shape': {
+        const shapeEl = element as ShapeElement;
+        const isGradient = shapeEl.fill.startsWith('linear-gradient');
+
+        if (shapeEl.shapeType === 'triangle') {
+          return (
+            <div key={element.id} style={baseStyle}>
+              <div
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: `${shapeEl.width / 2}px solid transparent`,
+                  borderRight: `${shapeEl.width / 2}px solid transparent`,
+                  borderBottom: `${shapeEl.height}px solid ${shapeEl.fill}`,
+                  filter: shadowStyle !== 'none' ? `drop-shadow(${shadowStyle})` : undefined,
+                }}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div key={element.id} style={baseStyle}>
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                background: isGradient ? shapeEl.fill : undefined,
+                backgroundColor: isGradient ? undefined : shapeEl.fill,
+                borderRadius: shapeEl.shapeType === 'circle' ? '50%' : shapeEl.borderRadius,
+                border: shapeEl.strokeWidth > 0 ? `${shapeEl.strokeWidth}px solid ${shapeEl.stroke}` : 'none',
+                boxShadow: shadowStyle,
+              }}
+            />
+          </div>
+        );
+      }
+
+      default:
+        return null;
     }
   };
 
@@ -91,6 +213,7 @@ export default function Preview() {
     );
   }
 
+  const visibleElements = previewData.elements.filter(el => el.visible);
   const scale = Math.min(
     (window.innerWidth - 80) / previewData.width,
     (window.innerHeight - 200) / previewData.height,
@@ -152,67 +275,7 @@ export default function Preview() {
               background: previewData.backgroundColor || '#ffffff',
             }}
           >
-            {previewData.elements.map((element) => (
-              <div
-                key={element.id}
-                style={{
-                  position: 'absolute',
-                  left: `${element.x}px`,
-                  top: `${element.y}px`,
-                  width: `${element.width}px`,
-                  height: `${element.height}px`,
-                  transform: `rotate(${element.rotation || 0}deg)`,
-                  opacity: element.opacity ?? 1,
-                }}
-              >
-                {element.type === 'text' && (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      fontFamily: element.fontFamily || 'Inter',
-                      fontSize: `${element.fontSize}px`,
-                      fontWeight: element.fontWeight || 400,
-                      color: element.color || '#000000',
-                      textAlign: element.textAlign || 'left',
-                      lineHeight: element.lineHeight || 1.5,
-                      letterSpacing: `${element.letterSpacing || 0}px`,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      display: 'flex',
-                      alignItems: 'center',
-                      textShadow: element.shadow ? `2px 2px 4px rgba(0,0,0,0.3)` : 'none',
-                    }}
-                  >
-                    {element.content}
-                  </div>
-                )}
-                {element.type === 'image' && (
-                  <img
-                    src={element.src}
-                    alt=""
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: element.objectFit || 'cover',
-                      borderRadius: `${element.borderRadius || 0}px`,
-                    }}
-                  />
-                )}
-                {element.type === 'shape' && (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: element.fill || '#3b82f6',
-                      borderRadius: element.shapeType === 'circle' ? '50%' : `${element.borderRadius || 0}px`,
-                      border: element.stroke ? `${element.strokeWidth || 2}px solid ${element.stroke}` : 'none',
-                      clipPath: element.shapeType === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : 'none',
-                    }}
-                  />
-                )}
-              </div>
-            ))}
+            {visibleElements.map(renderElement)}
           </div>
         </div>
       </main>

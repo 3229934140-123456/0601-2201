@@ -284,6 +284,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   toggleLock: (id) => {
+    get()._pushHistory();
     const state = get();
     set({
       elements: state.elements.map(el =>
@@ -293,6 +294,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   toggleVisibility: (id) => {
+    get()._pushHistory();
     const state = get();
     set({
       elements: state.elements.map(el =>

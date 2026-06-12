@@ -87,7 +87,7 @@ export const generateShareLink = (state: CanvasState): string => {
   try {
     const compressed = btoa(encodeURIComponent(JSON.stringify(state)));
     const baseUrl = window.location.origin + window.location.pathname;
-    return `${baseUrl}#preview=${compressed}`;
+    return `${baseUrl}preview#data=${compressed}`;
   } catch (e) {
     console.error('Failed to generate share link:', e);
     return '';
@@ -97,9 +97,9 @@ export const generateShareLink = (state: CanvasState): string => {
 export const parseShareLink = (hash?: string): CanvasState | null => {
   try {
     const targetHash = hash || window.location.hash.slice(1);
-    if (!targetHash.startsWith('preview=')) return null;
+    if (!targetHash.startsWith('data=')) return null;
     
-    const compressed = targetHash.slice(8);
+    const compressed = targetHash.slice(5);
     const decoded = JSON.parse(decodeURIComponent(atob(compressed)));
     return decoded as CanvasState;
   } catch (e) {
